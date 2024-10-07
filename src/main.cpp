@@ -67,8 +67,10 @@ int main(int, char** argv)
 
   Surface surf;
   float surf_color[4] = { 1.0f, 1.0f, 0.0f, 1.0f };
+  LiteMath::uchar4 clear_col = { 153, 153, 153, 255 };
 
   LiteImage::Image2D<uint32_t> framebuffer(WIDTH, HEIGHT);
+  LiteImage::Image2D<float> t_buffer(WIDTH, HEIGHT, std::numeric_limits<float>::infinity());
   SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
   SDL_Rect scr_rect = { 0, 0, WIDTH, HEIGHT };
 
@@ -87,6 +89,7 @@ int main(int, char** argv)
     "Bezier Method (in progress)"
   };
   int cur_renderer = 0;
+  int prev_renderer = 0;
   float ms = 0.0f;
 
   while (!done)
@@ -129,15 +132,19 @@ int main(int, char** argv)
       continue;
     }
 
+    if (cur_renderer != 1 || cur_renderer != prev_renderer || camera_move) {
+      framebuffer.clear(clear_col.u32);
+      t_buffer.clear(std::numeric_limits<float>::infinity());
+    }
+
     //Render image
     auto b = std::chrono::high_resolution_clock::now();
     switch(cur_renderer)
     {
       case 0: draw_points(surf, camera, framebuffer, surf_color); break;
-      case 1: draw_newton(surf, camera, framebuffer, surf_color); break;
+      case 1: draw_newton(surf, camera, framebuffer, t_buffer); break;
       case 2: draw_bezier(surf, camera, framebuffer, surf_color); break;
     }
-      
     auto e = std::chrono::high_resolution_clock::now();
     ms = std::chrono::duration_cast<std::chrono::microseconds>(e-b).count()/1000.0f;
 
@@ -163,6 +170,7 @@ int main(int, char** argv)
       ImGui::DragFloat3("Camera target", camera.target.M);
       camera = Camera(camera.aspect, camera.fov, camera.position, camera.target);
       ImGui::Text("Renderer settings:");
+      prev_renderer = cur_renderer;
       ImGui::ListBox("Method", &cur_renderer, renderers, 3);
       ImGui::Text("Debug Info");
       ImGui::Text("\tApplication average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
@@ -181,6 +189,8 @@ int main(int, char** argv)
         float radius = get_sphere_bound(surf, target);
         float distance = radius / std::sin(M_PI/8);
         camera = Camera(aspect, fov, { target.x, target.y, target.z+distance }, target);
+        framebuffer.clear(clear_col.u32);
+        t_buffer.clear(std::numeric_limits<float>::infinity());
       }
       ImGui::End();
     }

@@ -12,7 +12,7 @@
 using namespace LiteMath;
 using namespace LiteImage;
 
-constexpr float EPS = 0.001f;
+constexpr float EPS = 0.01f;
 constexpr int max_steps = 16;
 std::vector<std::mt19937> generators(omp_get_max_threads());
 
@@ -109,7 +109,11 @@ std::optional<float3> trace_surface_newton(
   if (length(D) > EPS)
     return {};
   
-  return float3(uv.x, uv.y, 0.0f);
+  float t = dot(ray, to_float3(surf.get_point(uv.x, uv.y))-pos);
+  if (t < 0)
+    return {};
+
+  return float3(uv.x, uv.y, t);
 }
 
 float pseudo_dot(const float2 &a, const float2 &b) {
@@ -309,7 +313,6 @@ void draw_points(
     const Camera &camera,
     Image2D<uint32_t> &image, 
     float col[4]) {
-  image.clear(LiteMath::uchar4{ 153, 153, 153, 255 }.u32);
   if (surface.u_knots.size() < 2 || surface.v_knots.size() < 2)
     return;
   float3 forward = normalize(camera.target - camera.position);
@@ -348,8 +351,7 @@ void draw_newton(
     const Surface &surface,
     const Camera &camera,
     Image2D<uint32_t> &image, 
-    float col[4]) {
-  image.clear(LiteMath::uchar4{ 153, 153, 153, 255 }.u32);
+    LiteImage::Image2D<float> &tbuf) {
   if (surface.u_knots.size() < 2 || surface.v_knots.size() < 2)
     return;
   float4x4 mat  = perspectiveMatrix(camera.fov*180*M_1_PI, camera.aspect, 0.001f, 100.0f)
@@ -374,12 +376,16 @@ void draw_newton(
       continue;
     auto intersect_point = trace_surface_newton(pos, ray, views[omp_get_thread_num()]);
     if (intersect_point.has_value()) {
-      float3 new_col = intersect_point.value();
-      image[uint2{ x, image.height()-1-y }] = uchar4{ 
-        static_cast<u_char>(new_col[0]*255.0f),
-        static_cast<u_char>(new_col[1]*255.0f),
-        static_cast<u_char>(new_col[2]*255.0f),
-        static_cast<u_char>(new_col[3]*255.0f) }.u32;
+      float3 value = intersect_point.value();
+      float t = value.z;
+      if (t < tbuf[uint2{ x, image.height()-1-y }]) {
+        tbuf[uint2{ x, image.height()-y-1 }] = t;
+        image[uint2{ x, image.height()-1-y }] = uchar4{ 
+          static_cast<u_char>(value[0]*255.0f),
+          static_cast<u_char>(value[1]*255.0f),
+          static_cast<u_char>(0.0f),
+          static_cast<u_char>(255.0f) }.u32;
+      }
     }
   }
 }
@@ -389,7 +395,6 @@ void draw_bezier(
     const Camera &camera,
     Image2D<uint32_t> &image, 
     float col[4]) {
-  image.clear(LiteMath::uchar4{ 153, 153, 153, 255 }.u32);
   if (surface.u_knots.size() < 2 || surface.v_knots.size() < 2)
     return;
   float4x4 mat  = perspectiveMatrix(camera.fov*180*M_1_PI, camera.aspect, 0.001f, 100.0f)

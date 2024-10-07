@@ -65,7 +65,7 @@ LiteMath::float4 SurfaceView::get_point(float u, float v) const {
 }
 
 LiteMath::float4 SurfaceView::uderivative(float u, float v) const {
-  constexpr float EPS = 1e-2f;
+  constexpr float EPS = 1e-6f;
   LiteMath::float4 res = {};
   res += (u+EPS > 1.0f) ? get_point(u, v) : get_point(u+EPS, v);
   res -= (u-EPS < 0.0f) ? get_point(u, v) : get_point(u-EPS, v);
@@ -74,7 +74,7 @@ LiteMath::float4 SurfaceView::uderivative(float u, float v) const {
 }
 
 LiteMath::float4 SurfaceView::vderivative(float u, float v) const {
-  constexpr float EPS = 1e-2f;
+  constexpr float EPS = 1e-6f;
   LiteMath::float4 res = {};
   res += (v+EPS > 1.0f) ? get_point(u, v) : get_point(u, v+EPS);
   res -= (v-EPS < 0.0f) ? get_point(u, v) : get_point(u, v-EPS);

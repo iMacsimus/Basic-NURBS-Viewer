@@ -35,7 +35,7 @@ void draw_newton(
     const Surface &surface,
     const Camera &camera,
     LiteImage::Image2D<uint32_t> &image, 
-    float col[4]);
+    LiteImage::Image2D<float> &tbuf);
 
 void draw_bezier(
     const Surface &surface,
