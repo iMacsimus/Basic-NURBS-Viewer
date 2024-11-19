@@ -162,6 +162,7 @@ int main(int, char** argv)
     }
     surface_changed = false;
     camera_changed = false;
+    renderer_changed = false;
 
     //Render image
     auto b = std::chrono::high_resolution_clock::now();
