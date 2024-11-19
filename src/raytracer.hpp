@@ -13,6 +13,8 @@ struct FrameBuffer
 {
   LiteImage::Image2D<uint32_t> col_buf;
   LiteImage::Image2D<float> z_buf;
+  int cur_samples = 0;
+  int max_samples = 16;
 };
 
 struct Camera

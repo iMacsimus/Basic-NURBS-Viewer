@@ -14,7 +14,7 @@ using namespace LiteImage;
 
 float EPS = 0.001f;
 int max_steps = 5;
-std::vector<std::mt19937> generators(omp_get_max_threads());
+static std::vector<std::mt19937> generators(omp_get_max_threads());
 
 static float2
 mul2x2x2(float2 m[2], const float2 &v)

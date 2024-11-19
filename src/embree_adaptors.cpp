@@ -1,9 +1,13 @@
 #include <cassert>
+#include <omp.h>
+#include <random>
 
 #include "embree_adaptors.hpp"
 #include "ispc_ray_pack_ispc.h"
 
 using namespace LiteMath;
+
+static std::vector<std::mt19937> generators(omp_get_max_threads());
 
 namespace embree
 {
@@ -258,6 +262,9 @@ namespace embree
     for (uint32_t x = 0; x < fb.col_buf.width();  x += ray_pack_dim) {
       typename EmbreeRayHit<size>::type ray_hit;
 
+      std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+      auto &gen = generators[omp_get_thread_num()];
+
       int valid[16]; 
       std::fill(valid, valid+16, -1);
       
@@ -271,7 +278,7 @@ namespace embree
           continue;
         }
 
-        float2 ndc_point  = float2{ x+dx+0.5f, y+dy+0.5f } 
+        float2 ndc_point  = float2{ x+dx+dist(gen), y+dy+dist(gen) } 
                         / float2{ fb.col_buf.width()*1.0f, fb.col_buf.height()*1.0f }
                         * 2.0f
                         - 1.0f;
@@ -315,9 +322,19 @@ namespace embree
           float t = length(point-camera.position);
           uint2 xy = uint2{ x+dx, fb.col_buf.height()-1-y-dy };
 
-          if (fb.z_buf[xy] > t) {
+          if (fb.cur_samples < fb.max_samples) {
             float4 color = shade_func(info, camera.position);
-            fb.z_buf[xy] = t;
+            
+            uchar4 prev_col_uc4;
+            prev_col_uc4.u32 = fb.col_buf[xy];
+            float4 prev_col = { 
+              static_cast<float>(prev_col_uc4.x), 
+              static_cast<float>(prev_col_uc4.y), 
+              static_cast<float>(prev_col_uc4.z), 
+              static_cast<float>(prev_col_uc4.w) };
+            prev_col /= 255.0f;
+
+            color = (prev_col * fb.cur_samples + color) / (fb.cur_samples+1);
             fb.col_buf[xy] = uchar4{ 
               static_cast<u_char>(color[0]*255.0f),
               static_cast<u_char>(color[1]*255.0f),
@@ -326,6 +343,10 @@ namespace embree
           }
         }
       }
+    }
+
+    if (fb.cur_samples < fb.max_samples) {
+      fb.cur_samples++;
     }
   }
 
@@ -354,7 +375,10 @@ namespace embree
     for (uint32_t y = 0; y < fb.col_buf.height(); ++y)
     for (uint32_t x = 0; x < fb.col_buf.width();  ++x)
     {
-      float2 ndc_point  = float2{ x+0.5f, y+0.5f } 
+      std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+      auto &gen = generators[omp_get_thread_num()];
+
+      float2 ndc_point  = float2{ x+dist(gen), y+dist(gen) } 
                         / float2{ fb.col_buf.width()*1.0f, fb.col_buf.height()*1.0f }
                         * 2.0f
                         - 1.0f;
@@ -391,9 +415,19 @@ namespace embree
         float t = length(point-camera.position);
         uint2 xy = uint2{ x, fb.col_buf.height()-1-y };
 
-        if (fb.z_buf[xy] > t) {
+        if (fb.cur_samples < fb.max_samples) {
           float4 color = shade_func(info, camera.position);
-          fb.z_buf[xy] = t;
+          
+          uchar4 prev_col_uc4;
+          prev_col_uc4.u32 = fb.col_buf[xy];
+          float4 prev_col = { 
+            static_cast<float>(prev_col_uc4.x), 
+            static_cast<float>(prev_col_uc4.y), 
+            static_cast<float>(prev_col_uc4.z), 
+            static_cast<float>(prev_col_uc4.w) };
+          prev_col /= 255.0f;
+
+          color = (prev_col * fb.cur_samples + color) / (fb.cur_samples+1);
           fb.col_buf[xy] = uchar4{ 
             static_cast<u_char>(color[0]*255.0f),
             static_cast<u_char>(color[1]*255.0f),
@@ -401,6 +435,10 @@ namespace embree
             static_cast<u_char>(color[3]*255.0f) }.u32;
         }
       }
+    }
+
+    if (fb.cur_samples < fb.max_samples) {
+      fb.cur_samples++;
     }
   }
 

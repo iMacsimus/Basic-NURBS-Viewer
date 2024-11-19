@@ -159,6 +159,7 @@ int main(int, char** argv)
     if (camera_changed || surface_changed || renderer_changed || shading_changed) {
       fb.col_buf.clear(LiteMath::uchar4{ 153, 153, 153, 255 }.u32);
       fb.z_buf.clear(std::numeric_limits<float>::infinity());
+      fb.cur_samples = 0;
     }
     surface_changed = false;
     camera_changed = false;
