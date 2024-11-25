@@ -26,52 +26,69 @@ LiteMath::float3 RBCurve2D::get_point(float u) const {
   return res;
 }
 
-LiteMath::float3 RBCurve2D::non_rat_der(float u, int order) const {
-  if (order == 0)
-    return get_point(u);
-
+LiteMath::float3 RBCurve2D::non_rat_der(float u) const {
   int p = degree();
 
-  RBCurve2D der = { std::vector<float3>(degree()+1) };
-  std::copy(pw.begin(), pw.end(), der.pw.begin());
-
-  for (int i = 0; i < order; ++i) {
-    for (int j = 0; j < p-i; ++i) {
-      der.pw[j] = (der.pw[j+1] - der.pw[j]) * (p-i);
-    }
+  if (p == 1) {
+    return p * (pw[1]-pw[0]);
   }
 
-  der.pw.resize(p+1-order);
-  return der.get_point(u);
-}
+  float u_n = 1.0f;
+  float _1_u = 1.0f - u;
+  int bc = 1.0f;
+  
+  float3 next = pw[1];
+  float3 cur = pw[0];
+  float3 res = (next-cur) * _1_u;
+  cur = next;
 
-LiteMath::float3 RBCurve2D::der(float u) const {
-  float3 p = get_point(u);
-  float3 d = non_rat_der(u, 1);
-  return (d*p.z - d.z*p)/(p.z * p.z);
-}
-
-LiteMath::float3 RBCurve2D::der(float u, int order) const {
-  if (order == 0) {
-    float3 res = get_point(u);
-    res /= res.z;
-    return res;
+  for (int i = 1; i <= p-2; ++i) {
+    u_n *= u;
+    bc = bc * (p-i)/i;
+    next = pw[i+1];
+    res = (res + u_n * bc * (next-cur)) * _1_u;
+    cur = next;
   }
 
-  int bc = 1;
-  float3 left = {};
-  for (int i = 0; i < order; ++i) {
-    float3 a = der(u, i);
-    float b = non_rat_der(u, order-i).z;
-    left += bc * a * b;
-    bc = bc * (order-i) / (i+1);
-  }
+  next = pw[p];
+  res += (u_n * u) * (next-cur);
 
-  float3 right = non_rat_der(u, order);
-
-  float3 res = (right - left) / (get_point(u).z * bc);
-  assert(res.z == 0.0f);
-
+  res *= p;
   return res;
 }
 
+float point(const LiteMath::float3 *pw, size_t index, size_t p, float u)
+{
+  float u_n = 1.0f;
+  float _1_u = 1.0f - u;
+  int bc = 1.0f;
+
+  float cw = pw[0][index] * _1_u;
+  for (int i = 1; i <= p-1; ++i) {
+    u_n *= u;
+    bc = bc * (p-i+1)/i;
+    cw = (cw + u_n * bc * pw[i][index]) * _1_u;
+  }
+  cw += (u_n * u) * pw[p][index];
+  return cw;
+}
+
+void __enzyme_autodiff(...);
+
+template<typename RT, typename... Args>
+RT __enzyme_autodiff(void*, Args...);
+
+int enzyme_dup;
+int enzyme_out;
+int enzyme_const;
+
+float der(const LiteMath::float3 *pw, size_t index, size_t p, float u)
+{
+  float res = __enzyme_autodiff<float>(
+    (void*)point,
+    enzyme_const, pw, 
+    enzyme_const, index,
+    enzyme_const, p,
+    enzyme_out, u);
+  return res;
+}

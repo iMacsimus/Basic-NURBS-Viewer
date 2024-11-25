@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.13)
 
 project("NURBSViewer" CXX)
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+set(ENZYME_PATH "${CMAKE_SOURCE_DIR}/external/enzyme/ClangEnzyme-17.so")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -fplugin=${ENZYME_PATH}")
 
 if (APPLE)
   set(embree_DIR /usr/local/Cellar/embree/4.3.3/lib/cmake/embree-4.3.3)
@@ -22,7 +23,7 @@ else()
   set(ImGUI_INCLUDE_DIRS ${SDL_INCLUDE_DIR})
 endif()
 
-find_package(OpenMP)
+#find_package(OpenMP)
 find_package(embree 4.3.3)
 add_subdirectory(external/step)
 
@@ -68,7 +69,7 @@ target_link_libraries(
   ${PROJECT_NAME}
     LiteMath
     ImGui
-    OpenMP::OpenMP_CXX
+    #OpenMP::OpenMP_CXX
     ispc_ray_pack
     embree
     step

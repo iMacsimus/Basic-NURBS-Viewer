@@ -4,7 +4,8 @@
 #include <iostream>
 #include <cassert>
 #include <limits>
-#include <omp.h>
+
+//#include <omp.h>
 #include <vector>
 
 #include "raytracer.hpp"
@@ -14,7 +15,7 @@ using namespace LiteImage;
 
 float EPS = 0.001f;
 int max_steps = 5;
-std::vector<std::mt19937> generators(omp_get_max_threads());
+std::vector<std::mt19937> generators(1);
 
 static float2
 mul2x2x2(float2 m[2], const float2 &v)
@@ -154,7 +155,7 @@ void draw_newton(
   float4x4 mat  = perspectiveMatrix(camera.fov*180*M_1_PI, camera.aspect, 0.001f, 100.0f)
                 * lookAt(camera.position, camera.target, camera.up);
   float4x4 inversed_mat = inverse4x4(mat);
-  #pragma omp parallel for schedule(dynamic)
+  //#pragma omp parallel for schedule(dynamic)
   for (uint32_t y = 0; y < fb.col_buf.height(); ++y)
   for (uint32_t x = 0; x < fb.col_buf.width();  ++x)
   {
@@ -172,7 +173,7 @@ void draw_newton(
       continue;
     
     auto distr = std::uniform_real_distribution<float>(0.0f, 1.0f);
-    auto &generator = generators[omp_get_thread_num()];
+    auto &generator = generators[0];
     float2 uv0 = { distr(generator), distr(generator) };
     auto info = trace_surface_newton(pos, ray, surface, uv0);
     if (info.hitten) {
@@ -202,7 +203,7 @@ void draw_boxes(
   float4x4 mat  = perspectiveMatrix(camera.fov*180*M_1_PI, camera.aspect, 0.001f, 100.0f)
                 * lookAt(camera.position, camera.target, camera.up);
   float4x4 inversed_mat = inverse4x4(mat);
-  #pragma omp parallel for schedule(dynamic)
+  //#pragma omp parallel for schedule(dynamic)
   for (uint32_t y = 0; y < fb.col_buf.height(); ++y)
   for (uint32_t x = 0; x < fb.col_buf.width();  ++x)
   {
