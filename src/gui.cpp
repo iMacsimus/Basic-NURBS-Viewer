@@ -1,12 +1,12 @@
 #include "gui.hpp"
 
-static auto sdl_initialization = []{
-  SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) ;
-  SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
-  SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
-  atexit(SDL_Quit);
-  return 0;
-}();
+// static auto sdl_initialization = []{
+//   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) ;
+//   SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
+//   SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
+//   atexit(SDL_Quit);
+//   return 0;
+// }();
 
 Application::Application(const std::string &name, int width, int height) {
   // Create window with SDL_Renderer graphics context

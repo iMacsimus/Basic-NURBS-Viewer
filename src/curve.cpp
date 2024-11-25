@@ -110,3 +110,82 @@ float der_dfg_fdg(const LiteMath::float3 *pw, size_t index, size_t p, float u) {
     enzyme_out, u);
   return res;
 }
+
+float der_dfg_fdg2(const LiteMath::float3 *pw, size_t index, size_t p, float u) {
+  float res = __enzyme_autodiff<float>(
+    (void*)der_dfg_fdg,
+    enzyme_const, pw, 
+    enzyme_const, index,
+    enzyme_const, p,
+    enzyme_out, u);
+  return res;
+}
+
+float der_dfg_fdg3(const LiteMath::float3 *pw, size_t index, size_t p, float u) {
+  float res = __enzyme_autodiff<float>(
+    (void*)der_dfg_fdg2,
+    enzyme_const, pw, 
+    enzyme_const, index,
+    enzyme_const, p,
+    enzyme_out, u);
+  return res;
+}
+// float der_dfg_fdg5(const LiteMath::float3 *pw, size_t index, size_t p, float u) {
+//   float res = __enzyme_autodiff<float>(
+//     (void*)der_dfg_fdg4,
+//     enzyme_const, pw, 
+//     enzyme_const, index,
+//     enzyme_const, p,
+//     enzyme_out, u);
+//   return res;
+// }
+
+// float der_dfg_fdg6(const LiteMath::float3 *pw, size_t index, size_t p, float u) {
+//   float res = __enzyme_autodiff<float>(
+//     (void*)der_dfg_fdg5,
+//     enzyme_const, pw, 
+//     enzyme_const, index,
+//     enzyme_const, p,
+//     enzyme_out, u);
+//   return res;
+// }
+
+// float der_dfg_fdg7(const LiteMath::float3 *pw, size_t index, size_t p, float u) {
+//   float res = __enzyme_autodiff<float>(
+//     (void*)der_dfg_fdg6,
+//     enzyme_const, pw, 
+//     enzyme_const, index,
+//     enzyme_const, p,
+//     enzyme_out, u);
+//   return res;
+// }
+
+// float der_dfg_fdg8(const LiteMath::float3 *pw, size_t index, size_t p, float u) {
+//   float res = __enzyme_autodiff<float>(
+//     (void*)der_dfg_fdg7,
+//     enzyme_const, pw, 
+//     enzyme_const, index,
+//     enzyme_const, p,
+//     enzyme_out, u);
+//   return res;
+// }
+
+// float der_dfg_fdg9(const LiteMath::float3 *pw, size_t index, size_t p, float u) {
+//   float res = __enzyme_autodiff<float>(
+//     (void*)der_dfg_fdg8,
+//     enzyme_const, pw, 
+//     enzyme_const, index,
+//     enzyme_const, p,
+//     enzyme_out, u);
+//   return res;
+// }
+
+// float der_dfg_fdg10(const LiteMath::float3 *pw, size_t index, size_t p, float u) {
+//   float res = __enzyme_autodiff<float>(
+//     (void*)der_dfg_fdg9,
+//     enzyme_const, pw, 
+//     enzyme_const, index,
+//     enzyme_const, p,
+//     enzyme_out, u);
+//   return res;
+// }

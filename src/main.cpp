@@ -45,14 +45,16 @@ int main(int, char** argv)
   float3 d = rbcurve.non_rat_der(u);
   std::cout << d.x << " " << d.y << " " << d.z << std::endl;
 
-  std::cout << der_dfg_fdg(rbcurve.pw.data(), 0, 3, u) << " ";
-  std::cout << der_dfg_fdg(rbcurve.pw.data(), 1, 3, u) << " ";
-  std::cout << der_dfg_fdg(rbcurve.pw.data(), 2, 3, u) << std::endl;
+  std::cout << der_dfg_fdg2(rbcurve.pw.data(), 0, 3, u) << " ";
+  std::cout << der_dfg_fdg2(rbcurve.pw.data(), 1, 3, u) << " ";
+  std::cout << der_dfg_fdg2(rbcurve.pw.data(), 2, 3, u) << std::endl;
 
   auto func = [&](float u) {
-    float3 d = rbcurve.non_rat_der(u);
-    float3 c = rbcurve.get_point(u);
-    return d * c.z - c * d.z;
+    float3 res = { 
+        der_dfg_fdg(rbcurve.pw.data(), 0, 3, u),
+        der_dfg_fdg(rbcurve.pw.data(), 1, 3, u),
+        der_dfg_fdg(rbcurve.pw.data(), 2, 3, u) };
+    return res;
   };
 
   d = (func(u+0.001) - func(u-0.001f))/0.002f;

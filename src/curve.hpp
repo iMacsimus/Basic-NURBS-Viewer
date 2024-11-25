@@ -22,5 +22,7 @@ float der(const LiteMath::float3 *pw, size_t index, size_t p, float u);
 
 float dfg_fdg(const LiteMath::float3 *pw, size_t index, size_t p, float u);
 float der_dfg_fdg(const LiteMath::float3 *pw, size_t index, size_t p, float u);
+float der_dfg_fdg2(const LiteMath::float3 *pw, size_t index, size_t p, float u);
+float der_dfg_fdg3(const LiteMath::float3 *pw, size_t index, size_t p, float u);
 
 #endif 
