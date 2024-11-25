@@ -58,11 +58,13 @@ int main(int, char** argv)
 
   const char *shaders[] = {
     "UV",
-    "Normals"
+    "Normals",
+    "Lambert"
   };
   std::function<ShadeFuncType> shader_funcs[] = {
     shade_uv,
-    shade_normals
+    shade_normals,
+    shade_lambert
   };
   int cur_shader = 0;
 
