@@ -2,6 +2,7 @@
 #define NURBS_SRC_UTILS
 #include <vector>
 #include <type_traits>
+#include <cstddef>
 
 template<typename T>
 struct StrideView
