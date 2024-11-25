@@ -92,3 +92,21 @@ float der(const LiteMath::float3 *pw, size_t index, size_t p, float u)
     enzyme_out, u);
   return res;
 }
+
+float dfg_fdg(const LiteMath::float3 *pw, size_t index, size_t p, float u) {
+  float g = point(pw, 2, p, u);
+  float dg = der(pw, 2, p, u);
+  float f = point(pw, index, p, u);
+  float df = der(pw, index, p, u);
+  return df * g - f * dg;
+}
+
+float der_dfg_fdg(const LiteMath::float3 *pw, size_t index, size_t p, float u) {
+  float res = __enzyme_autodiff<float>(
+    (void*)dfg_fdg,
+    enzyme_const, pw, 
+    enzyme_const, index,
+    enzyme_const, p,
+    enzyme_out, u);
+  return res;
+}

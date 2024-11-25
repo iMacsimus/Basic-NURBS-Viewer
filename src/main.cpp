@@ -38,10 +38,23 @@ int main(int, char** argv)
     { 1, -1, 1}
   };
   srand(time(NULL));
-  float u = rand() * 1.0f / RAND_MAX;
+  float u = rand() * 1.0f / static_cast<float>(RAND_MAX);
   std::cout << der(rbcurve.pw.data(), 0, 3, u) << " ";
   std::cout << der(rbcurve.pw.data(), 1, 3, u) << " ";
   std::cout << der(rbcurve.pw.data(), 2, 3, u) << std::endl;
-  float3 der = rbcurve.non_rat_der(u);
-  std::cout << der.x << " " << der.y << " " << der.z << std::endl;
+  float3 d = rbcurve.non_rat_der(u);
+  std::cout << d.x << " " << d.y << " " << d.z << std::endl;
+
+  std::cout << der_dfg_fdg(rbcurve.pw.data(), 0, 3, u) << " ";
+  std::cout << der_dfg_fdg(rbcurve.pw.data(), 1, 3, u) << " ";
+  std::cout << der_dfg_fdg(rbcurve.pw.data(), 2, 3, u) << std::endl;
+
+  auto func = [&](float u) {
+    float3 d = rbcurve.non_rat_der(u);
+    float3 c = rbcurve.get_point(u);
+    return d * c.z - c * d.z;
+  };
+
+  d = (func(u+0.001) - func(u-0.001f))/0.002f;
+  std::cout << d.x << " " << d.y << " " << d.z << std::endl;
 }
