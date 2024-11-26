@@ -12,11 +12,13 @@ public:
   int degree() const;
 public:
   LiteMath::float3 get_point(float u) const;
-  LiteMath::float3 der(float u, int order) const;
-  LiteMath::float3 non_rat_der(float u, int order) const;
   LiteMath::float3 der(float u) const;
+  LiteMath::float3 non_rat_der(float u) const;
 public:
   std::vector<LiteMath::float3> pw;
 };
+
+std::vector<float>
+get_bimonotonic_parts(const RBCurve2D &curve);
 
 #endif 
