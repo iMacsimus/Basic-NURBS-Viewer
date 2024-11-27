@@ -53,6 +53,8 @@ public:
       : RBCurve2DMapped(curve, tmin, tmax)
       , monotonic_knots(get_bimonotonic_parts(curve)) {}
 public:
+  std::vector<float> intersections(float u0) const;
+public:
   std::vector<float> monotonic_knots;
 };
 

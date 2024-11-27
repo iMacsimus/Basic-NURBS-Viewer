@@ -139,6 +139,7 @@ float3 fder_g__f_gder(const Matrix2D<float3> &der_points, int order, float u) {
   return a-b;
 }
 
+constexpr float BISECTION_EPS = 0.001f;
 template<typename F>
 std::optional<float>
 bisection(F f, float min_u, float max_u) {
@@ -147,10 +148,13 @@ bisection(F f, float min_u, float max_u) {
   {
     float tmp1 = f(min_u);
     float tmp2 = f(max_u);
-    if (tmp1 >= 0 && tmp2 >= 0) {
+    if (abs(tmp1) < BISECTION_EPS && abs(tmp2) < BISECTION_EPS) {
       return {};
     }
-    if (tmp1 <= 0 && tmp2 <= 0) {
+    if (tmp1 > 0 && tmp2 > 0) {
+      return {};
+    }
+    if (tmp1 < 0 && tmp2 < 0) {
       return {};
     }
     if (tmp1 > tmp2) {
@@ -158,8 +162,7 @@ bisection(F f, float min_u, float max_u) {
     }
   }
 
-  constexpr float BISECTION_EPS = 0.001f;
-  while(std::abs(l-r) < BISECTION_EPS) {
+  while(std::abs(l-r) > BISECTION_EPS) {
     float m = (l+r) / 2.0f;
     float m_val = f(m);
     if (m_val < 0.0f) {
@@ -204,7 +207,13 @@ get_bimonotonic_parts(const RBCurve2D &curve) {
   auto knots2 = get_monotonic_parts(der_matrix, 1, 0);
   std::vector<float> knots;
   std::merge(knots1.begin(), knots1.end(), knots2.begin(), knots2.end(), std::back_inserter(knots));
+  for (int i = 1; i < knots.size(); ++i) {
+    if (abs(knots[i]-knots[i-1]) < 2*BISECTION_EPS) {
+      knots[i] = knots[i-1];
+    }
+  }
   knots.resize(std::unique(knots.begin(), knots.end())-knots.begin());
+  knots.back() = 1.0f;
   return knots;
 }
 
@@ -336,4 +345,24 @@ NURBSCurve2D load_nurbs_curve(std::filesystem::path path) {
     elem = (elem-u_min)/(u_max-u_min);
 
   return curve;
+}
+
+std::vector<float> RBCurve2DMonotonic::intersections(float u0) const {
+  std::vector<float> res;
+  for (int span = 0; span < monotonic_knots.size()-1; ++span) {
+    float t_min = lerp(this->tmin, this->tmax, monotonic_knots[span]);
+    float t_max = lerp(this->tmin, this->tmax, monotonic_knots[span+1]);
+    auto f = [&](float t) {
+      auto p = get_point(t);
+      p /= p.z;
+      return p.x-u0;
+    };
+    auto potential_hit = bisection(f, tmin, tmax);
+    if (potential_hit.has_value()) {
+      auto p = get_point(potential_hit.value());
+      p /= p.z;
+      res.push_back(p.y);
+    }
+  }
+  return res;
 }
