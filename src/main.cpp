@@ -19,7 +19,6 @@
 #include "utils.hpp"
 #include "embree_adaptors.hpp"
 #include "gui.hpp"
-#include "curve.hpp"
 
 using namespace LiteMath;
 using namespace LiteImage;

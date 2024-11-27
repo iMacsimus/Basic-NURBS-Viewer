@@ -60,8 +60,6 @@ add_executable(
     src/embree_adaptors.cpp
     src/gui.hpp 
     src/gui.cpp
-    src/curve.hpp
-    src/curve.cpp
 )
 target_include_directories(${PROJECT_NAME} PUBLIC ${SDL_INCLUDE_DIR})
 target_link_libraries(
@@ -72,4 +70,15 @@ target_link_libraries(
     ispc_ray_pack
     embree
     step
+)
+
+add_executable(
+  trimming_curve_test
+    src/curve.hpp 
+    src/curve.cpp
+    src/trimming_curve_main.cpp
+)
+target_link_libraries(
+  trimming_curve_test
+    LiteMath
 )

@@ -1,6 +1,8 @@
 #include <vector>
 #include <cassert>
 #include <optional>
+#include <fstream>
+#include <iostream>
 
 #include "curve.hpp"
 
@@ -206,3 +208,132 @@ get_bimonotonic_parts(const RBCurve2D &curve) {
   return knots;
 }
 
+std::vector<RBCurve2DMapped>
+decompose_nurbs_curve(const NURBSCurve2D &nurbs) {
+  int n = nurbs.pw.size()-1;
+  int m = nurbs.knots.size()-1;
+  int p = m-n-1;
+
+  const float3 *Pw = nurbs.pw.data();
+  const float *U = nurbs.knots.data();
+
+  int a = p;
+  int b = p+1;
+  int nb = 0;
+  std::vector<RBCurve2DMapped> Qw(1, RBCurve2D{std::vector<float3>(p+1)});
+  std::vector<float> alphas(p+1);
+  for (int i=0; i <= p; ++i) 
+    Qw[nb].pw[i] = Pw[i];
+  while (b < m) {
+    int i = b;
+    while (b < m && U[b+1] == U[b]) 
+      b++;
+    int mult = b-i+1;
+    if (mult < p) {
+      float numer = U[b]-U[a]; /* Numerator of alpha */
+      /* Compute and store alphas */
+      for (int j = p; j > mult; j--)
+        alphas [j-mult-1] = numer/(U[a+j] - U[a]);
+      int r = p-mult; /* Insert knot r times */
+      for (int j= 1; j <= r; j++) {
+        int save = r-j;
+        int s = mult+j; /* This many new points */
+        for (int k=p; k>=s; k--) {
+          float alpha = alphas[k-s];
+          Qw[nb].pw[k] = alpha*Qw[nb].pw[k] + (1.0f - alpha)*Qw[nb].pw[k - 1];
+        }
+        if (b < m) { /* Control point of */ 
+          if (Qw.size() == nb+1)
+            Qw.push_back(RBCurve2D{std::vector<float3>(p+1)});
+          Qw [nb+1].pw[save] = Qw[nb].pw[p]; /* next segment */
+        }
+      }
+    }
+    nb = nb+1; /* Bezier segment completed */
+    if (b < m) { 
+      if (Qw.size() == nb)
+        Qw.push_back(RBCurve2D{std::vector<float3>(p+1)});
+      /* Initialize for next segment */
+      for (i=p-mult; i<=p; i++) 
+        Qw[nb].pw[i] = Pw[b-p+i];
+      a = b;
+      b = b+1;
+    }
+  }
+
+  auto knots = nurbs.knots;
+  knots.resize(std::unique(knots.begin(),knots.end())-knots.begin());
+
+  for (int i = 0; i < knots.size()-1; ++i) {
+    Qw[i].tmin = knots[i];
+    Qw[i].tmax = knots[i+1];
+  }
+  return Qw;
+}
+
+NURBSCurve2D load_nurbs_curve(std::filesystem::path path) {
+  std::fstream fin;
+  fin.exceptions(std::ios::failbit|std::ios::badbit);
+  fin.open(path);
+  if (!fin.good()) throw std::runtime_error("Failed to open the file.");
+
+  std::string tmp_str;
+  char tmp_chr;
+
+  NURBSCurve2D curve;
+
+  int n;
+  fin >> tmp_chr >> tmp_chr >> n; // n = ...
+
+  curve.pw = std::vector<float3>(n+1, { 0, 0, 1.0f });
+  float min_u = std::numeric_limits<float>::infinity();
+  float max_u = -min_u;
+  float min_v = min_u;
+  float max_v = max_u;
+
+  fin >> tmp_str; // "points:"
+  for (int i = 0; i <= n; ++i)
+  {
+    auto &point = curve.pw[i];
+    fin >> tmp_chr >> point.x >> tmp_chr >> point.y >> tmp_chr; // { ..., ..., ... }
+    min_u = std::min(min_u, point.x);
+    max_u = std::max(max_u, point.x);
+    min_v = std::min(min_v, point.y);
+    max_v = std::max(max_v, point.y);
+  }
+  // std::cout << "normalized points:" << std::endl;
+  // for (int i = 0; i <= n; ++i)
+  // {
+  //   auto &point = curve.pw[i];
+  //   point.x = (point.x-min_u) / (max_u-min_u);
+  //   point.y = (point.y-min_v) / (max_v-min_v);
+  //   std::cout << "{" << point.x << ", " << point.y << "} ";
+  // }
+  // std::cout << std::endl;
+
+
+  fin >> tmp_str; // "weights:"
+  for (int i = 0; i <= n; ++i)
+  {
+    float w;
+    fin >> w;
+    curve.pw[i] *= w;
+  }
+
+  fin >> tmp_str; // "degree:"
+  int deg;
+  fin >> deg;
+
+  curve.knots.resize(n+deg+2);
+  fin >> tmp_str; // "knots:"
+  for (size_t i = 0; i < curve.knots.size(); ++i) {
+    fin >> curve.knots[i];
+  }
+
+  float u_min = curve.knots.front();
+  float u_max = curve.knots.back();
+  for (auto &elem: curve.knots)
+    elem = (elem-u_min)/(u_max-u_min);
+
+  return curve;
+}
