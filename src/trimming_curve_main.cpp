@@ -36,13 +36,7 @@ int main(int argc, const char **argv) {
     vs.push_back(0.0f);
     vs.push_back(1.0f);
     std::sort(vs.begin(), vs.end());
-    for (int i = 1; i < vs.size(); ++i) {
-      if (std::abs(vs[i]-vs[i-1]) < 0.0000001f) {
-        vs[i] = vs[i-1];
-      }
-    }
     vs.resize(std::unique(vs.begin(), vs.end())-vs.begin());
-    vs.back() = 1.0f;
     for (int span = 0; span < vs.size()-1; ++span) {
       uchar4 color = (span % 2 == 0) ? uchar4{0, 255, 0, 255} : uchar4{255, 0, 0, 255};
       int x_min = static_cast<int>(vs[span]*width);
@@ -66,7 +60,7 @@ int main(int argc, const char **argv) {
         int x = static_cast<int>(p.y*width);
         int y = static_cast<int>(p.x*height);
         x = clamp(x, 0, width-1);
-        y = clamp(y, 0, width-1);
+        y = clamp(y, 0, height-1);
         for (int dy = -1; dy <= 1; ++dy)
         for (int dx = -1; dx <= 1; ++dx)
         {

@@ -207,13 +207,7 @@ get_bimonotonic_parts(const RBCurve2D &curve) {
   auto knots2 = get_monotonic_parts(der_matrix, 1, 0);
   std::vector<float> knots;
   std::merge(knots1.begin(), knots1.end(), knots2.begin(), knots2.end(), std::back_inserter(knots));
-  for (int i = 1; i < knots.size(); ++i) {
-    if (abs(knots[i]-knots[i-1]) < 2*BISECTION_EPS) {
-      knots[i] = knots[i-1];
-    }
-  }
   knots.resize(std::unique(knots.begin(), knots.end())-knots.begin());
-  knots.back() = 1.0f;
   return knots;
 }
 
@@ -357,7 +351,7 @@ std::vector<float> RBCurve2DMonotonic::intersections(float u0) const {
       p /= p.z;
       return p.x-u0;
     };
-    auto potential_hit = bisection(f, tmin, tmax);
+    auto potential_hit = bisection(f, t_min, t_max);
     if (potential_hit.has_value()) {
       auto p = get_point(potential_hit.value());
       p /= p.z;
