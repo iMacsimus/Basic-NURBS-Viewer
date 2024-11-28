@@ -53,6 +53,35 @@ int main(int argc, const char **argv) {
     }
   }
 
+  int points_count = 1000;
+  bool even = true;
+  for (auto &c: mrbcurves) {
+    for (int span = 0; span < c.monotonic_knots.size()-1; ++span) {
+      float tmin = lerp(c.tmin, c.tmax, c.monotonic_knots[span]);
+      float tmax = lerp(c.tmin, c.tmax, c.monotonic_knots[span+1]);
+      for (int point_i = 0; point_i < points_count; ++point_i) {
+        float t = lerp(tmin, tmax, point_i * 1.0f/points_count);
+        auto p = c.get_point(t);
+        p /= p.z;
+        int x = static_cast<int>(p.y*width);
+        int y = static_cast<int>(p.x*height);
+        x = clamp(x, 0, width-1);
+        y = clamp(y, 0, width-1);
+        for (int dy = -1; dy <= 1; ++dy)
+        for (int dx = -1; dx <= 1; ++dx)
+        {
+          int2 xy = { x+dx, y+dy };
+          if (any_of(xy < int2{0, 0}) || any_of(xy >= int2{width, height})) {
+            continue;
+          }
+          uchar4 color = even ? uchar4{0, 0, 0, 255} : uchar4{255, 255, 255, 255};
+          img[xy] = color.u32;
+        }
+      }
+      even = !even;
+    }
+  }
+
   SaveBMP("curve_res.bmp", img.data(), width, height);
 
   return 0;
