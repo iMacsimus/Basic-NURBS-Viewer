@@ -51,6 +51,7 @@ struct RBCurve2D : public BCurve3D
   LiteMath::float3 fg_gf(float u, int order = 0) const;
   std::vector<float> monotonic_parts(int axes, int order = 0) const;
   std::vector<LiteMath::float3> intersections(float u0) const;
+  LiteMath::float3 intersection(float u0, int span = 0) const;
   LiteMath::float3 operator()(float u) const;
 
   // Monotonic knots

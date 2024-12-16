@@ -508,4 +508,80 @@ namespace embree
     auto &ray = const_cast<RTCRay&>(*reinterpret_cast<const RTCRay*>(args->ray));
     float2 uv0{ ray.org_x, ray.org_y };
   }
+
+  void EmbreeTrimKdTree::add_box(
+        const RBCurve2D *curves, 
+        KdTreeBox box, 
+        KdTreeLeave leaf) {
+    CurveId id = leaf.curve_id;
+    uint32_t curv_index = id.curve_id;
+    int span = static_cast<int>(id.monotonic_span);
+    auto *p_curve = (id == -1u) ? nullptr : &curves[curv_index];
+    boxes.push_back(TrimKdTreeLeaf{ box, p_curve, leaf.precalc, span });
+    auto &cur = boxes.back();
+    RTCGeometry geom = rtcNewGeometry(device, RTC_GEOMETRY_TYPE_USER);
+    rtcSetGeometryUserPrimitiveCount(geom, 1);
+    rtcSetGeometryUserData(geom, &cur);
+    rtcSetGeometryBoundsFunction(geom, kd_bounds_function, nullptr);
+    rtcSetGeometryIntersectFunction(geom, kd_intersect_function);
+    rtcCommitGeometry(geom);
+    rtcAttachGeometry(scn, geom);
+    rtcReleaseGeometry(geom);
+  }
+
+  void kd_bounds_function(const RTCBoundsFunctionArguments *args) {
+    const auto &leaf = *reinterpret_cast<const TrimKdTreeLeaf*>(args->geometryUserPtr);
+    args->bounds_o->lower_x = leaf.box.boxMin.x;
+    args->bounds_o->lower_y = leaf.box.boxMin.y;
+    args->bounds_o->lower_z = -1.0f;
+
+    args->bounds_o->upper_x = leaf.box.boxMax.x;
+    args->bounds_o->upper_y = leaf.box.boxMax.y;
+    args->bounds_o->upper_z = 1.0f;
+  }
+
+  void kd_intersect_function(const RTCIntersectFunctionNArguments *args) {
+    const TrimKdTreeLeaf leaf = *reinterpret_cast<const TrimKdTreeLeaf*>(args->geometryUserPtr);
+    assert(args->N == 1);
+    if (!args->valid[0])
+      return;
+
+    auto &ray_hit = const_cast<RTCRayHit&>(*reinterpret_cast<const RTCRayHit*>(args->rayhit));
+    float2 uv = float2{ ray_hit.ray.org_x, ray_hit.ray.org_y };
+    assert(all_of(leaf.box.boxMin <= uv) && all_of(uv <= leaf.box.boxMax));
+
+
+    bool ans = leaf.precalc;
+
+    if (leaf.p_curve) {
+      auto p = leaf.p_curve->intersection(uv.x, leaf.span);
+      p /= p.z;
+      if (p.y > uv.y) {
+        ans ^= 1;
+      }
+    }
+
+    if (ans) {
+      auto &hit = ray_hit.hit;
+      hit.geomID = args->geomID;
+      hit.primID = args->primID;
+    }
+  }
+
+  bool EmbreeTrimKdTree::query(float u, float v) const {
+    RTCRay ray;
+    ray.org_x = u;
+    ray.org_y = v;
+    ray.org_z = 1;
+    ray.dir_x = 0;
+    ray.dir_y = 0;
+    ray.dir_z = -1.0f;
+    RTCHit hit;
+    hit.geomID = RTC_INVALID_GEOMETRY_ID;
+
+    RTCRayHit ray_hit = { ray, hit };
+    rtcIntersect1(scn, &ray_hit);
+
+    return ray_hit.hit.geomID != RTC_INVALID_GEOMETRY_ID;
+  }
 } // namespace embree

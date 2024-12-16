@@ -303,6 +303,24 @@ RBCurve2D::intersections(float u0) const {
   return result;
 }
 
+float3
+RBCurve2D::intersection(float u0, int span) const {
+  // |f(u) - f(u0)| < eps_coeff * EPSb = EPS
+  // EPSb = EPS / eps_coeff;
+  float eps = c::INTERSECTION_EPS / eps_coeff;
+  float3 res;
+  float umin = knots[span];
+  float umax = knots[span+1];
+  auto f = [&](float t) {
+    auto p = get_point(t);
+    return p.x - u0;
+  };
+
+  auto potential_hit = bisection(f, umin, umax, eps);
+  auto t = potential_hit.value();
+  return get_point(t);
+}
+
 LiteMath::float3 RBCurve2D::operator()(float u) const {
     return get_point(u);
 }

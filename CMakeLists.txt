@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 
 project("NURBSViewer" CXX)
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -fsanitize=undefined -fsanitize=address")
 
 if (APPLE)
   set(embree_DIR /usr/local/Cellar/embree/4.3.3/lib/cmake/embree-4.3.3)
@@ -184,3 +184,21 @@ add_executable(
 )
 target_link_libraries(kd_tree_test LiteMath)
 target_include_directories(kd_tree_test PUBLIC ${PROJECT_SOURCE_DIR}/src/)
+
+add_executable(
+  kd_tree_test_embree
+    tests/kd_tree_test_embree.cpp
+    src/Surface.hpp
+    src/Surface.cpp
+    src/raytracer.hpp
+    src/raytracer.cpp
+    src/utils.hpp
+    src/utils.cpp
+    src/embree_adaptors.hpp
+    src/embree_adaptors.cpp
+    src/curve.hpp
+    src/curve.cpp
+    src/constants.hpp  
+)
+target_link_libraries(kd_tree_test_embree LiteMath embree ispc_ray_pack step OpenMP::OpenMP_CXX)
+target_include_directories(kd_tree_test_embree PUBLIC ${PROJECT_SOURCE_DIR}/src/)
