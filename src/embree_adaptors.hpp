@@ -42,6 +42,7 @@ namespace embree
       rtcSetDeviceErrorFunction(device, errorFunction, nullptr);
 #endif
       scn = rtcNewScene(device);
+      rtcCommitScene(scn);
     }
   public:
     void attach_surface(

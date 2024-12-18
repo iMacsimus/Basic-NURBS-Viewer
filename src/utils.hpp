@@ -2,6 +2,7 @@
 #define NURBS_SRC_UTILS
 #include <vector>
 #include <type_traits>
+#include <cstddef>
 
 #include "LiteMath.h"
 

@@ -59,6 +59,21 @@ LiteMath::float4 shade_uv(
 }
 
 inline 
+LiteMath::float4 shade_lambert(
+    const HitInfo &info,
+    const LiteMath::float3 &camera_pos) {
+  LiteMath::float3 light_dir = { -1, -1, -1};
+  light_dir = LiteMath::normalize(light_dir);
+
+  float br = std::max(LiteMath::dot(-light_dir, info.normal), 0.0f);
+
+  LiteMath::float3 color = br * LiteMath::float3{1.0f};
+  color = LiteMath::clamp(color, 0.0f, 1.0f);
+
+  return LiteMath::to_float4(color, 1.0f); 
+}
+
+inline 
 LiteMath::float4 shade_normals(
     const HitInfo &info,
     const LiteMath::float3 &camera_pos) {

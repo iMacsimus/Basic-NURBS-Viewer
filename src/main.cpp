@@ -43,11 +43,17 @@ int main(int, char** argv)
     (proj_path / "resources" / "Roboto-Black.ttf").c_str(), 14);
   
   bool done = false;
-  bool to_load_surface = false;
   bool surface_changed = false;
   bool renderer_changed = false;
   bool shading_changed = false;
   bool camera_changed = false;
+
+  bool to_load_surface = false;
+  char path_to_surf[1000] = {};
+  auto resources_path = proj_path / "resources";
+  strncpy(path_to_surf, resources_path.c_str(), sizeof(path_to_surf));
+  bool swap_yz = false;
+  bool tesselate = false;
 
   const char *renderers[] = { 
     "Regular Sample Points", 
@@ -56,17 +62,19 @@ int main(int, char** argv)
     "Embree User Defined",
     "Embree Triangles"
   };
-  int cur_renderer = 0;
+  int cur_renderer = 3;
 
   const char *shaders[] = {
     "UV",
-    "Normals"
+    "Normals",
+    "Lambert"
   };
   std::function<ShadeFuncType> shader_funcs[] = {
     shade_uv,
-    shade_normals
+    shade_normals,
+    shade_lambert
   };
-  int cur_shader = 0;
+  int cur_shader = 2;
 
   embree::EmbreeScene embree_scn, embree_tesselated, embree_boxes;
 
@@ -76,7 +84,7 @@ int main(int, char** argv)
     embree::RayPackSize::RAY_PACK_8,
     embree::RayPackSize::RAY_PACK_16
   };
-  int cur_ray_pack = 0;
+  int cur_ray_pack = 1;
   const char *ray_packs_str[] = {
     "x1", "x4", "x8", "x16"
   };
@@ -200,6 +208,8 @@ int main(int, char** argv)
       ImGui::Text("Surface preferences:");
       if (ImGui::Button("Load new surface")) {
         to_load_surface = true;
+        swap_yz = false;
+        tesselate = false;
       }
       ImGui::Text("Camera settings:");
       camera_changed |= ImGui::DragFloat3("Camera position", camera.position.M);
@@ -236,55 +246,90 @@ int main(int, char** argv)
       }
       ImGui::End();
     }
-    ImGui::PopFont();
 
 
     //loading new surface
     if (to_load_surface) {
-      embree_scn.clear_scene();
-      embree_tesselated.clear_scene();
-      embree_boxes.clear_scene();
-
-      char path_to_surf[1000] = {};
-      FILE *f = popen("zenity --file-selection", "r");
-      [[maybe_unused]] auto _ = fgets(path_to_surf, sizeof(path_to_surf), f);
-      pclose(f);
-      path_to_surf[strnlen(path_to_surf, sizeof(path_to_surf))-1] = '\0';
-      to_load_surface = false;
-      surface_changed = true;
-      try {
-        rbeziers = load_rbeziers(path_to_surf);
-        bboxes.resize(0);
-        uvs.resize(0);
-        total_bboxes_count = 0;
-        for (auto &surf: rbeziers) {
-          auto [cur_bboxes, cur_uv] = get_bvh_leaves(surf);
-          bboxes.push_back(cur_bboxes);
-          uvs.push_back(cur_uv);
-          total_bboxes_count += cur_bboxes.size();
-        }
-        for (int i = 0; i < rbeziers.size(); ++i) {
-          embree_scn.attach_surface(rbeziers[i], bboxes[i], uvs[i]);
-          embree_boxes.attach_boxes(bboxes[i], uvs[i]);
-          embree_tesselated.attach_mesh(get_nurbs_control_mesh(rbeziers[i]));
-        }
-        embree_scn.commit_scene();
-        embree_boxes.commit_scene();
-        embree_tesselated.commit_scene();
-        BoundingBox3d bbox;
-        for (auto &surf: rbeziers) {
-          bbox.mn = LiteMath::min(bbox.mn, surf.bbox.mn);
-          bbox.mx = LiteMath::max(bbox.mx, surf.bbox.mx);
-        }
-        auto target = bbox.center();
-        float radius = LiteMath::length(bbox.mn-target);
-        float distance = radius / std::sin(M_PI/8);
-        camera = Camera(aspect, fov, { target.x, target.y, target.z+distance }, target);
-        std::cout << "\"" << path_to_surf << "\" loaded!" << std::endl;
-      } catch(...) {
-        std::cout << "Failed to load \"" << path_to_surf << "\"!" << std::endl;
+      ImVec2 win_size = ImVec2(393.0f, 129.0f);
+      ImGui::SetNextWindowSize(win_size);
+      ImGui::SetNextWindowPos(ImVec2((WIDTH-win_size.x)/2, (HEIGHT-win_size.y)/2));
+      ImGui::Begin("New Surface", &to_load_surface,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoResize);
+      ImGui::PushItemWidth(315);
+      ImGui::InputText("", path_to_surf, sizeof(path_to_surf));
+      ImGui::PopItemWidth();
+      ImGui::SetCursorPosX(325);
+      ImGui::SetCursorPosY(28);
+      if (ImGui::Button("Choose...")) {
+        char command[1000] = {};
+        snprintf(command, sizeof(command), "zenity --file-selection --filename=%s", path_to_surf);
+        FILE *f = popen("zenity --file-selection", "r");
+        [[maybe_unused]] auto _ = fgets(path_to_surf, sizeof(path_to_surf), f);
+        pclose(f);
+        path_to_surf[strnlen(path_to_surf, sizeof(path_to_surf))-1] = '\0';
       }
+      ImGui::SetCursorPosY(53);
+      ImGui::Checkbox("Swap Y, Z", &swap_yz);
+      ImGui::Checkbox("Tesselate", &tesselate);
+      ImGui::SetCursorPosX(win_size.x/2-20);
+      if (ImGui::Button("Load", ImVec2(40, 20))) {
+        to_load_surface = false;
+        surface_changed = true;
+        embree_boxes.clear_scene();
+        embree_scn.clear_scene();
+        embree_tesselated.clear_scene();
+        try {
+          rbeziers = load_rbeziers(path_to_surf);
+          if (swap_yz) {
+            for (auto &surf: rbeziers) 
+            for (int i = 0; i < surf.grid.get_n(); ++i)
+            for (int j = 0; j < surf.grid.get_m(); ++j)
+            {
+              auto *arr = surf.grid[{i, j}].weighted_points.data();
+              auto size = surf.grid[{i, j}].weighted_points.get_n()
+                        * surf.grid[{i, j}].weighted_points.get_m();
+              std::transform(arr, arr+size, arr, [](float4 point) { 
+                std::swap(point.z, point.y);
+                point.z *= -1.0f;
+                return point;
+              });
+            }
+          }
+          bboxes.resize(0);
+          uvs.resize(0);
+          total_bboxes_count = 0;
+          BoundingBox3d bbox;
+          for (auto &surf: rbeziers) {
+            auto [cur_bboxes, cur_uv] = get_bvh_leaves(surf);
+            for (auto &cur: cur_bboxes) {
+              bbox.mn = min(bbox.mn, cur.mn);
+              bbox.mx = max(bbox.mx, cur.mx);
+            }
+            bboxes.push_back(cur_bboxes);
+            uvs.push_back(cur_uv);
+            total_bboxes_count += cur_bboxes.size();
+          }
+          for (int i = 0; i < rbeziers.size(); ++i) {
+            embree_scn.attach_surface(rbeziers[i], bboxes[i], uvs[i]);
+            embree_boxes.attach_boxes(bboxes[i], uvs[i]);
+            if (tesselate) {
+              embree_tesselated.attach_mesh(get_nurbs_control_mesh(rbeziers[i]));
+            }
+          }
+          embree_scn.commit_scene();
+          embree_boxes.commit_scene();
+          embree_tesselated.commit_scene();
+          auto target = bbox.center();
+          float radius = LiteMath::length(bbox.mn-target);
+          float distance = radius / std::sin(M_PI/8);
+          camera = Camera(aspect, fov, { target.x, target.y, target.z+distance }, target);
+          std::cout << "\"" << path_to_surf << "\" loaded!" << std::endl;
+        } catch(...) {
+          std::cout << "Failed to load \"" << path_to_surf << "\"!" << std::endl;
+        }
+      }
+      ImGui::End();
     }
+    ImGui::PopFont();
 
     // Rendering
     app.fill_buffer(fb.col_buf);
