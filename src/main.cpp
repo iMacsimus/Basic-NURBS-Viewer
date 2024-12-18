@@ -60,7 +60,7 @@ int main(int, char** argv)
     "Embree User Defined",
     "Embree Triangles"
   };
-  int cur_renderer = 0;
+  int cur_renderer = 3;
 
   const char *shaders[] = {
     "UV",
@@ -72,7 +72,7 @@ int main(int, char** argv)
     shade_normals,
     shade_lambert
   };
-  int cur_shader = 0;
+  int cur_shader = 2;
 
   embree::EmbreeScene embree_scn, embree_tesselated, embree_boxes;
 
@@ -82,7 +82,7 @@ int main(int, char** argv)
     embree::RayPackSize::RAY_PACK_8,
     embree::RayPackSize::RAY_PACK_16
   };
-  int cur_ray_pack = 0;
+  int cur_ray_pack = 1;
   const char *ray_packs_str[] = {
     "x1", "x4", "x8", "x16"
   };
