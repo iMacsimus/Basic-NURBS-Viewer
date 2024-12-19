@@ -105,6 +105,9 @@ public:
       LiteMath::float2 box_max,
       const RBCurve2D *p_curve,
       int monotonic_span);
+  void commit_scene() {
+      rtcCommitScene(scn);
+  }
 public:
   ~EmbreeTrimBVH() {
     rtcReleaseScene(scn);
@@ -117,6 +120,46 @@ private:
 };
 void curve_bounds_function(const RTCBoundsFunctionArguments *args);
 void curve_occluded_function(const RTCOccludedFunctionNArguments *args);
+
+struct TrimKdTreeLeaf
+{
+  KdTreeBox box;
+  const RBCurve2D *p_curve;
+  bool precalc;
+  int span;
+};
+
+struct EmbreeTrimKdTree
+{
+public:
+  EmbreeTrimKdTree() {
+    device = rtcNewDevice(nullptr);
+#ifndef NDEBUG
+    rtcSetDeviceErrorFunction(device, errorFunction, nullptr);
+#endif
+    scn = rtcNewScene(device);
+  }
+public:
+  void add_box(
+      const RBCurve2D *curves, 
+      KdTreeBox box, 
+      KdTreeLeave leaf);
+  bool query(float u, float v) const;
+  void commit_scene() {
+      rtcCommitScene(scn);
+  }
+public:
+  ~EmbreeTrimKdTree() {
+    rtcReleaseScene(scn);
+    rtcReleaseDevice(device);
+  }
+private:
+  RTCDevice device;
+  RTCScene scn;
+  std::list<TrimKdTreeLeaf> boxes;
+};
+void kd_bounds_function(const RTCBoundsFunctionArguments *args);
+void kd_intersect_function(const RTCIntersectFunctionNArguments *args);
 
 } // namespace embree
 

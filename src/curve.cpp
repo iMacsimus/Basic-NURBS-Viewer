@@ -303,6 +303,24 @@ RBCurve2D::intersections(float u0) const {
   return result;
 }
 
+float3
+RBCurve2D::intersection(float u0, int span) const {
+  // |f(u) - f(u0)| < eps_coeff * EPSb = EPS
+  // EPSb = EPS / eps_coeff;
+  float eps = c::INTERSECTION_EPS / eps_coeff;
+  float3 res;
+  float umin = knots[span];
+  float umax = knots[span+1];
+  auto f = [&](float t) {
+    auto p = get_point(t);
+    return p.x - u0;
+  };
+
+  auto potential_hit = bisection(f, umin, umax, eps);
+  auto t = potential_hit.value();
+  return get_point(t);
+}
+
 LiteMath::float3 RBCurve2D::operator()(float u) const {
     return get_point(u);
 }
@@ -519,7 +537,7 @@ de_casteljau_division(const RBCurve2D &c, float t) {
     for (int j = 0; j <= p-i-1; ++j)
       tmp[j] += (tmp[j+1]-tmp[j])*t_effective;
   }
-  return std::array{ RBCurve2D(res[0], c.tmin, t), RBCurve2D(res[1], c.tmax, t) };
+  return std::array{ RBCurve2D(res[0], c.tmin, t), RBCurve2D(res[1], t, c.tmax) };
 }
 
 KdTreeBox calc_box(const RBCurve2D &curve) {
@@ -570,14 +588,15 @@ get_kdtree_leaves_helper(
     box_left.boxMax = box_right.boxMax = box_max;
     std::vector<RBCurve2D> left, right;
     std::vector<uint32_t> left_ids, right_ids;
-    bool has_to_divide = (box_min[0] < box.boxMin[0] || box_max[0] > box.boxMax[0]);
-    if (box.boxMin[axes] != box_min[axes]) {
+    bool has_to_divide  =  !isclose(box.boxMin[0], box_min[0], c::KD_TREE_BISECTION_EPS)
+                        || !isclose(box.boxMax[0], box_max[0], c::KD_TREE_BISECTION_EPS);
+    if (box.boxMin[axes] > box_min[axes]+c::KD_TREE_BISECTION_EPS) {
       has_to_divide = true;
       box_left.boxMax[axes] = box.boxMin[axes];
       box_right.boxMin[axes] = box.boxMin[axes];
       right = std::move(curves);
       right_ids = std::move(curv_ids);
-    } else if (box.boxMax[axes] != box_max[axes]) {
+    } else if (box.boxMax[axes] < box_max[axes]-c::KD_TREE_BISECTION_EPS) {
       has_to_divide = true;
       box_left.boxMax[axes] = box.boxMax[axes];
       box_right.boxMin[axes] = box.boxMax[axes];
@@ -627,15 +646,26 @@ get_kdtree_leaves_helper(
   split_candidates.resize(
       std::unique(split_candidates.begin(), split_candidates.end())-split_candidates.begin());
   float middle = split_candidates[split_candidates.size()/2];
-
+  if (isclose(middle, box_min[axes], c::KD_TREE_BISECTION_EPS)
+      || isclose(middle, box_max[axes], c::KD_TREE_BISECTION_EPS)) {
+    middle = (box_min[axes]+box_max[axes]) / 2.0f;
+  }
   for (int i = 0; i < curves.size(); ++i) {
     auto box = calc_box(curves[i]);
-    if (all_of(box.boxMax <= box_min) || all_of(box.boxMin >= box_max)) {
-      continue;
-    }
     box.boxMin = max(box.boxMin, box_min);
     box.boxMax = min(box.boxMax, box_max);
-    if (box.boxMin[axes] >= middle) {
+    if (isclose(box.boxMin[axes], middle, constants::KD_TREE_BISECTION_EPS)
+        || isclose(box.boxMax[axes], middle, constants::KD_TREE_BISECTION_EPS)) {
+      float dist1 = middle - box.boxMin[axes];
+      float dist2 = box.boxMax[axes] - middle; 
+      if (dist1 > dist2) {
+          left_child_curves.push_back(curves[i]);
+          left_child_ids.push_back(curv_ids[i]);
+      } else {
+        right_child_curves.push_back(curves[i]);
+        right_child_ids.push_back(curv_ids[i]);
+      }
+    } else if (box.boxMin[axes] >= middle) {
       right_child_curves.push_back(curves[i]);
       right_child_ids.push_back(curv_ids[i]);
     } else if (box.boxMax[axes] <= middle) {
@@ -648,32 +678,20 @@ get_kdtree_leaves_helper(
         p /= p.z;
         return p[axes] - middle;
       };
-      // TODO define child to put curve if no intersections
       auto t = bisection(f, curve.tmin, curve.tmax, c::KD_TREE_BISECTION_EPS);
-      if (!t.has_value()) {
-        auto test_point = curve.points[{0, 0}];
-        test_point /= test_point.z;
-        if (test_point[axes] < middle) {
-          left_child_curves.push_back(curve);
-          left_child_ids.push_back(curv_ids[i]);
-        } else {
-          right_child_curves.push_back(curve);
-          right_child_ids.push_back(curv_ids[i]);
-        }
+      auto parts = de_casteljau_division(curve, t.value());
+      auto test_box = calc_box(parts[0]);
+      float dist1 = middle - test_box.boxMin[axes];
+      float dist2 = test_box.boxMax[axes] - middle;
+      if (dist1 > dist2) {
+        left_child_curves.push_back(parts[0]);
+        right_child_curves.push_back(parts[1]);
       } else {
-        auto parts = de_casteljau_division(curve, t.value());
-        auto test_point = parts[0].points[{0, 0}];
-        test_point /= test_point.z;
-        if (test_point[axes] < middle) {
-          left_child_curves.push_back(parts[0]);
-          right_child_curves.push_back(parts[1]);
-        } else {
-          left_child_curves.push_back(parts[1]);
-          right_child_curves.push_back(parts[0]);
-        }
-        left_child_ids.push_back(curv_ids[i]);
-        right_child_ids.push_back(curv_ids[i]);
+        left_child_curves.push_back(parts[1]);
+        right_child_curves.push_back(parts[0]);
       }
+      left_child_ids.push_back(curv_ids[i]);
+      right_child_ids.push_back(curv_ids[i]);
     }
   }
 
