@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 
 project("NURBSViewer" CXX)
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -fsanitize=undefined -fsanitize=address")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 
 if (APPLE)
   set(embree_DIR /usr/local/Cellar/embree/4.3.3/lib/cmake/embree-4.3.3)

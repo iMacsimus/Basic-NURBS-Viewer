@@ -92,7 +92,8 @@ int main(int argc, const char **argv) {
     }
   }
 
-  for (auto &box: boxes) {
+  for (int i = 0; i < boxes.size(); ++i) {
+    auto &box = boxes[i];
     int2 scr_min = int2{
       static_cast<int>(box.boxMin.y * w), 
       static_cast<int>(box.boxMin.x * h)};

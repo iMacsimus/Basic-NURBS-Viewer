@@ -556,7 +556,7 @@ namespace embree
     if (leaf.p_curve) {
       auto p = leaf.p_curve->intersection(uv.x, leaf.span);
       p /= p.z;
-      if (p.y > uv.y) {
+      if (p.y <= uv.y) {
         ans ^= 1;
       }
     }
@@ -565,6 +565,8 @@ namespace embree
       auto &hit = ray_hit.hit;
       hit.geomID = args->geomID;
       hit.primID = args->primID;
+      // std::cout << leaf.box.boxMin.x << " " << leaf.box.boxMax.x << " " << std::endl;
+      // std::cout << leaf.box.boxMin.y << " " << leaf.box.boxMax.y << " " << std::endl;
     }
   }
 

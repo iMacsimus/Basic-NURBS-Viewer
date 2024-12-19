@@ -18,12 +18,13 @@ int main(int argc, const char **argv) {
   NURBSCurve2D heart = load_nurbs_curve(proj_path / "resources" / "heart.nurbsc");
   auto rbeziers = circle.decompose();
   auto heart_rbeziers = heart.decompose();
+  //rbeziers = heart_rbeziers;
   std::copy(heart_rbeziers.begin(), heart_rbeziers.end(), std::back_inserter(rbeziers));
 
   auto [boxes, leaves] = get_kdtree_leaves(rbeziers);
   std::cout << boxes.size() << std::endl;
 
-  int w = 500, h = 500;
+  int w = 1000, h = 1000;
   Image2D<uint32_t> img(w, h), img2(w, h);
 
 
