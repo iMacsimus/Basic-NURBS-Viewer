@@ -1,61 +1,71 @@
-## Installation guide (Linux/OSX):
-* Clone the repository and install submodules:  
+# Installation guide (Linux/OSX)
 
-  ```
-    git submodule update --init
-  ```
+## Download
 
-* Install Intel ISPC compiler:
-  1) Download binaries https://ispc.github.io/downloads.html
-  2) Copy ispc to /usr/local/bin or any another directory from PATH
-* Install brew from https://brew.sh/ (**OSX**)
-* Install cmake:  
-  **Linux**:  
+### Setup repository
+Clone the repository and install submodules:
+```
+git clone https://github.com/iMacsimus/Basic-NURBS-Viewer.git
+git submodule update --init
+```
 
-  ```
-    sudo apt install cmake
-  ```
+### Install Intel ISPC compiler
+1) Download binaries https://ispc.github.io/downloads.html  
+2) Copy ispc to /usr/local/bin or any other directory from PATH  
 
-  **OSX**:  
+### Install brew (OSX)
 
-  ```
-    brew install cmake
-  ```
+* Download brew from https://brew.sh/
 
-* Install dependencies:  
-  **Linux**:  
+### Install cmake 
+#### Linux
 
-  ```
-    sudo apt install libglfw3 libglfw3-dev libsdl2-dev libomp-dev
-  ```  
+```
+sudo apt install cmake
+```
 
-  **OSX**:  
-  ```
-    brew install libomp glfw sdl2 embree
-  ```
-  To install zenity run: 
- 
-  ```
-    brew install zenity
-  ```
+#### OSX
 
-* Generate build files: 
- 
-  ```
-    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-  ```  
+```
+brew install cmake
+```
 
-* Build the application binary:  
+### Install dependencies
+#### Linux  
 
-  ```
-    cmake --build build
-  ```
+```
+sudo apt install libglfw3 libglfw3-dev libsdl2-dev libomp-dev
+```  
 
-* Application "NURBSViewer" will appear in "build" directory 
-* Run "NURBSViewer" from any working directory.  
+#### OSX  
+```
+brew install libomp glfw sdl2 embree
+```
+To install zenity run: 
+
+```
+brew install zenity
+```
+
+## Build
+Generate build files: 
+
+```
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+```  
+
+Build the application binary:  
+
+```
+cmake --build build
+```
+
+## Run
+Application `NURBSViewer` will appear in `build` directory  
+Run `NURBSViewer` from any working directory.  
   For example, from project root directory run:  
 
-  ```
-    ./build/NURBSViewer
-  ```
+```
+./build/NURBSViewer
+```
 
